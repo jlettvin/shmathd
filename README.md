@@ -41,3 +41,10 @@ The project will have phases:
 
 My personal goal is to make computers hotter when there's work to do
 which likely means making them cooler on average.
+
+References:
+* http://stackoverflow.com/tags/x86/info
+* http://stackoverflow.com/questions/20933746/parallel-programming-using-haswell-architecture
+* https://software.intel.com/sites/landingpage/IntrinsicsGuide/
+* http://stackoverflow.com/questions/15933100/how-to-use-fused-multiply-add-fma-instructions-with-sse-avx
+
