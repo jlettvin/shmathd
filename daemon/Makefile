@@ -5,7 +5,13 @@
 # -Wno-self-assign			ignore argc=argc and argv=argv used to pass syntax
 CFLAGS=-Wall -Wno-format-security -Wno-self-assign
 
+.PHONY: all
 all:	shmathd
+	@echo "TODO: integrate shm_server.c into shmathd"
+
+.PHONY: clean
+clean:
+	@rm -f shmathd
 
 shmathd:	shmathd.cpp Makefile
 	@g++ $(CFLAGS) -o $@ $<
