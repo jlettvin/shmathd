@@ -1,9 +1,9 @@
 #!/usr/bin/env make
 MODULE=gpu11
+BANNER=python ../Banner.py -c "yb"
 
 CHECKERIMG=img/checkers_0060_01.png
 NOISYIMG=img/gray_0.03_0.30.png
-FIGIMG=img/fig.gif
 IMGS=$(CHECKERIMG)
 
 MAKES=$(CHECKERIMG) $(NOISYIMG)
@@ -20,23 +20,23 @@ MAKES=$(CHECKERIMG) $(NOISYIMG)
 
 .PHONY: all
 all:	$(MODULE).py $(MAKES) Makefile
+	@$(BANNER) "run $(MODULE)"
 	@./$(MODULE).py
 
 .PHONY: clean
 clean:
+	@$(BANNER) "clean gpgpu directory"
 	@rm -f img/checkers*.png img/gray*.png
 	@rm -f RPN_CUDA_*.txt RPN_sourceCode.c
 	@rm -f img/target.png
 
-$(FIGIMG):	make_fig.py Makefile
-	@mkdir -p -m 777 img
-	@./$<
-
 $(CHECKERIMG):	make_checkers.py Makefile
+	@$(BANNER) "make checkers figures"
 	@mkdir -p -m 777 img
 	@for i in 1 2 3 4 5 6 10 12 15 20 30; do ./$< 60 $$i; done
 
 $(NOISYIMG):	make_noisyboundary.py Makefile
+	@$(BANNER) "make noisy figures"
 	@mkdir -p -m 777 img
 	@for i in 3e-2 5e-2; \
 		do for j in 3e-1 5e-1; \
