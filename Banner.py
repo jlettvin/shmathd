@@ -47,6 +47,8 @@ from sys        import (stdout)
 from string     import (join)
 from itertools  import (product)
 
+from terminalsize import (get_terminal_size)
+
 version = "Banner.py 1.1.0"
 
 def outputBanner(**kw):
@@ -110,8 +112,12 @@ def outputBanner(**kw):
         head = [start + ' ', prefix + hue + 'm' + divider+ '\n' + start + ' ']
         tail = ['', '\n' + divider+ prefix + normal + 'm']
 
+    (twidth, theight) = get_terminal_size()
+
     """These values enable choice of head and tail."""
-    listOfLines = kw['args']
+    listOfLines = []
+    #listOfLines = ['',]
+    listOfLines += kw['args']
     listOfLines = listOfLines if listOfLines else [
             getlogin()
             +' '+
@@ -120,6 +126,8 @@ def outputBanner(**kw):
             list(uname())[1]
             ,
             ]
+    # VT100 emulator doesn't right-fill the first line with correct color.
+    listOfLines[0] = listOfLines[0]+' '*(twidth - lead - 1 - len(listOfLines[0]))
     listLength = len(listOfLines)
     lastIndex = listLength - 1
 
