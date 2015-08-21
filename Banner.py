@@ -24,7 +24,7 @@ Usage:
 [--divider=<CHAR>] \
 [--lead=<LEAD>] \
 [--width=<COUNT>] \
-[<line>...]
+[<args>...]
     Banner.py (-h | --help)
     Banner.py --version
 
@@ -111,7 +111,7 @@ def outputBanner(**kw):
         tail = ['', '\n' + divider+ prefix + normal + 'm']
 
     """These values enable choice of head and tail."""
-    listOfLines = kw['line']
+    listOfLines = kw['args']
     listOfLines = listOfLines if listOfLines else [
             getlogin()
             +' '+
@@ -132,12 +132,12 @@ if __name__ == '__main__':
         output = stdout
         print>>output, 'hello'
         # Here is an example using no keywords (all defaults).
-        outputBanner(line=['colorful', 'multihued'])
+        outputBanner(args=['colorful', 'multihued'])
         # Here is an example using some keywords (some defaults).
-        outputBanner(line=['and', 'useful'], color = 'my', divider = '=', width = 10)
+        outputBanner(args=['and', 'useful'], color = 'my', divider = '=', width = 10)
         # Here is an example using all keywords.
         outputBanner(
-            line=['gift for all', 'to make banners'],
+            args=['gift for all', 'to make banners'],
             color = 'ym', divider = '~', lead = 5, width = 80, output = output)
         print>>output, 'world'
         # Now try all possible non-matching color pairs.
@@ -145,15 +145,16 @@ if __name__ == '__main__':
             if color[0] == color[1]: continue
             normal = join(color, '')
             bolder = normal + '!'
-            outputBanner(line=[normal], color = normal)
-            outputBanner(line=[bolder], color = bolder)
-        outputBanner(line=[])
-        outputBanner(line=['bare'], bare=True)
+            outputBanner(args=[normal], color = normal)
+            outputBanner(args=[bolder], color = bolder)
+        outputBanner(args=[])
+        outputBanner(args=['bare'], bare=True)
 
     def main(**kwargs):
         test() if kwargs.get('test') else outputBanner(**kwargs)
 
-    kw = {k.replace('-','').replace('<','').replace('>',''): v
+    kwargs = {
+            k.replace('-','').replace('<','').replace('>',''): v
             for k,v in
             docopt(__doc__,version=version).iteritems()}
-    main(**kw)
+    main(**kwargs)
