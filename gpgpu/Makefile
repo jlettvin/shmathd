@@ -1,6 +1,6 @@
 #!/usr/bin/env make
 MODULE=gpu11
-BANNER=python ../Banner.py -c "yb"
+BANNER=python ../Banner.py -b -c "yb"
 
 CHECKERIMG=img/checkers_0060_01.png
 NOISYIMG=img/gray_0.03_0.30.png

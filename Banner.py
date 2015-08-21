@@ -1,12 +1,57 @@
 #!/usr/bin/env python
 
-import sys, string, itertools
-from optparse import OptionParser
+"""Banner.py
+Copyright(c) 2012-2015 Jonathan D. Lettvin, All Rights Reserved.
 
-def outputBanner(listOfLines, **kw):
+Banner is used to output visually useful titles from the command-line.
+Colors are from VT100 legacy support in most terminal emulators.
+0 black
+r red
+g green
+y yellow
+b blue
+m magenta
+c cyan
+w white
+Divider lines are composed from multiple characters (default '***').
+
+Usage:
+    Banner.py \
+[(-b       | --bare)] \
+[(-t       | --test)] \
+[(-v       | --verbose)] \
+[--color=<COLOR>] \
+[--divider=<CHAR>] \
+[--lead=<LEAD>] \
+[--width=<COUNT>] \
+<line>...
+    Banner.py
+    Banner.py (-h | --help)
+    Banner.py --version
+
+Options:
+    -b, --bare            Minimized output [default: False]
+    -t, --test            Exhaustive test [default: False]
+    -c, --color=<COLOR>   Foreground/background 2 color spec [default: r-]
+    -d, --divider=<CHAR>  Char to use when drawing lines [default: *]
+    -l, --lead=<LEAD>     Lead char count when drawing lines [default: 3]
+    -v, --verbose         Verbose [default: False]
+    -w, --width=<COUNT>   Char count to use when drawing lines [default: 50]
+"""
+
+from docopt import (docopt)
+from pprint import (pprint)
+from optparse import (OptionParser)
+from os import (uname, getlogin)
+from string import (lstrip)
+
+import sys, string, itertools
+
+version = "Banner.py 1.1.0"
+
+def outputBanner(**kw):
     """
     outputBanner outputs a colorful banner for which it is easy to scan.
-    @param listOfLines is a list of strings (with no newlines).
     @param kw['color'] is a color pair from colorList, defaulting to 'wg'.
     @param kw['width'] is the width of the banner line divider.
     @param kw['divider'] is the single character used in the line divider.
@@ -20,11 +65,10 @@ def outputBanner(listOfLines, **kw):
     A horizontal line of width divider characters is output.
     The output color is changed to the xterm default colors.
 
-    An empty listOfLines means no banner will be output.
-
     xterm escape codes, including those used for color, are found here:
     http://en.wikipedia.org/wiki/ANSI_escape_code
     """
+    if kw['verbose']: pprint(kw)
     colorList = {'0':0, 'r':1, 'g':2, 'y':3, 'b':4, 'm':5, 'c':6, 'w':7}
 
     """Fetch a validated color from kw or use the default white on green."""
@@ -37,7 +81,7 @@ def outputBanner(listOfLines, **kw):
             hue = '%d;3%d;4%d' % (bold, colorList[color[0]], colorList[color[1]])
 
     """Fetch a validated lead width from kw or use the default 3."""
-    lead = kw.get('lead', 3)
+    lead = int(kw.get('lead', 3))
     lead = lead if 0 < lead <= 8 else 3
 
     """Fetch a validated line width from kw or use the default 50."""
@@ -67,7 +111,8 @@ def outputBanner(listOfLines, **kw):
         tail = ['', '\n' + divider+ prefix + normal + 'm']
 
     """These values enable choice of head and tail."""
-    listOfLines = listOfLines if listOfLines else ['default banner line',]
+    listOfLines = kw['<line>']
+    listOfLines = listOfLines if listOfLines else [getlogin()+':'+list(uname())[1],]
     listLength = len(listOfLines)
     lastIndex = listLength - 1
 
@@ -98,17 +143,8 @@ if __name__ == '__main__':
         outputBanner([])
         outputBanner(['bare'], bare=True)
 
-    def main(args, **kwargs):
-        test() if kwargs.get('test') else outputBanner(args, **kwargs)
+    def main(**kwargs):
+        test() if kwargs.get('test') else outputBanner(**kwargs)
 
-    parser = OptionParser()
-    parser.add_option('-b', '--bare'   , action="store_true" , default=False,help="No head/tail")
-    parser.add_option('-t', '--test'   , action="store_true" , default=False,help="Test")
-    parser.add_option('-c', '--color'  , default='r-'        , help='color pair (i.e. "rg")')
-    parser.add_option('-d', '--divider', default='*'         , help='character to form divider')
-    parser.add_option('-w', '--width'  , default=50, type=int, help='divider width')
-    parser.add_option('-l', '--lead'   , default=3 , type=int, help='lead width')
-    (opts, args) = parser.parse_args()
-    kwargs = vars(opts)
-
-    main(args, **kwargs)
+    kw = {lstrip(k,'-'): v for k,v in docopt(__doc__,version=version).iteritems()}
+    main(**kw)
