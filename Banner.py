@@ -17,35 +17,35 @@ Divider lines are composed from multiple characters (default '***').
 
 Usage:
     Banner.py \
-[(-b       | --bare)] \
-[(-t       | --test)] \
-[(-v       | --verbose)] \
+[--bare] \
+[--test] \
+[--verbose] \
 [--color=<COLOR>] \
 [--divider=<CHAR>] \
 [--lead=<LEAD>] \
 [--width=<COUNT>] \
-<line>...
-    Banner.py
+[<line>...]
     Banner.py (-h | --help)
     Banner.py --version
 
 Options:
+    -v, --verbose         Verbose [default: False]
     -b, --bare            Minimized output [default: False]
     -t, --test            Exhaustive test [default: False]
     -c, --color=<COLOR>   Foreground/background 2 color spec [default: r-]
     -d, --divider=<CHAR>  Char to use when drawing lines [default: *]
     -l, --lead=<LEAD>     Lead char count when drawing lines [default: 3]
-    -v, --verbose         Verbose [default: False]
-    -w, --width=<COUNT>   Char count to use when drawing lines [default: 50]
+    -w, --width=<COUNT>   Char count to use when drawing lines [default: 70]
 """
 
-from docopt import (docopt)
-from pprint import (pprint)
-from optparse import (OptionParser)
-from os import (uname, getlogin)
-from string import (lstrip)
-
-import sys, string, itertools
+from docopt     import (docopt)
+from pprint     import (pprint)
+from optparse   import (OptionParser)
+from os         import (uname, getlogin)
+from datetime   import (datetime)
+from sys        import (stdout)
+from string     import (join)
+from itertools  import (product)
 
 version = "Banner.py 1.1.0"
 
@@ -68,7 +68,7 @@ def outputBanner(**kw):
     xterm escape codes, including those used for color, are found here:
     http://en.wikipedia.org/wiki/ANSI_escape_code
     """
-    if kw['verbose']: pprint(kw)
+    if kw.get('verbose'): pprint(kw)
     colorList = {'0':0, 'r':1, 'g':2, 'y':3, 'b':4, 'm':5, 'c':6, 'w':7}
 
     """Fetch a validated color from kw or use the default white on green."""
@@ -84,9 +84,9 @@ def outputBanner(**kw):
     lead = int(kw.get('lead', 3))
     lead = lead if 0 < lead <= 8 else 3
 
-    """Fetch a validated line width from kw or use the default 50."""
-    width = kw.get('width', 50)
-    width = width if lead < width <= 80 else 50
+    """Fetch a validated line width from kw or use the default 70."""
+    width = int(kw.get('width', 70))
+    width = width if lead < width <= 80 else 70
 
     """Fetch a validated line character from kw or use the default *."""
     divider = kw.get('divider', '*')
@@ -95,8 +95,8 @@ def outputBanner(**kw):
     divider *= width
 
     """Fetch a validated output stream from kw or use the default sys.stdout."""
-    output = kw.get('output', sys.stdout)
-    output = output if isinstance(output, type(sys.stdout)) else sys.stdout
+    output = kw.get('output', stdout)
+    output = output if isinstance(output, type(stdout)) else stdout
 
     """This is the standard prefix for xterm escape sequences."""
     prefix = '\x1b\x5b'
@@ -111,8 +111,15 @@ def outputBanner(**kw):
         tail = ['', '\n' + divider+ prefix + normal + 'm']
 
     """These values enable choice of head and tail."""
-    listOfLines = kw['<line>']
-    listOfLines = listOfLines if listOfLines else [getlogin()+':'+list(uname())[1],]
+    listOfLines = kw['line']
+    listOfLines = listOfLines if listOfLines else [
+            getlogin()
+            +' '+
+            datetime.now().isoformat()
+            +' '+
+            list(uname())[1]
+            ,
+            ]
     listLength = len(listOfLines)
     lastIndex = listLength - 1
 
@@ -122,29 +129,31 @@ def outputBanner(**kw):
 
 if __name__ == '__main__':
     def test():
-        output = sys.stdout
+        output = stdout
         print>>output, 'hello'
         # Here is an example using no keywords (all defaults).
-        outputBanner(['colorful', 'multihued'])
+        outputBanner(line=['colorful', 'multihued'])
         # Here is an example using some keywords (some defaults).
-        outputBanner(['and', 'useful'], color = 'my', divider = '=', width = 10)
+        outputBanner(line=['and', 'useful'], color = 'my', divider = '=', width = 10)
         # Here is an example using all keywords.
         outputBanner(
-            ['gift for all', 'to make banners'],
+            line=['gift for all', 'to make banners'],
             color = 'ym', divider = '~', lead = 5, width = 80, output = output)
         print>>output, 'world'
         # Now try all possible non-matching color pairs.
-        for color in list(itertools.product('0rgybmcw', repeat=2)):
+        for color in list(product('0rgybmcw', repeat=2)):
             if color[0] == color[1]: continue
-            normal = string.join(color, '')
+            normal = join(color, '')
             bolder = normal + '!'
-            outputBanner([normal], color = normal)
-            outputBanner([bolder], color = bolder)
-        outputBanner([])
-        outputBanner(['bare'], bare=True)
+            outputBanner(line=[normal], color = normal)
+            outputBanner(line=[bolder], color = bolder)
+        outputBanner(line=[])
+        outputBanner(line=['bare'], bare=True)
 
     def main(**kwargs):
         test() if kwargs.get('test') else outputBanner(**kwargs)
 
-    kw = {lstrip(k,'-'): v for k,v in docopt(__doc__,version=version).iteritems()}
+    kw = {k.replace('-','').replace('<','').replace('>',''): v
+            for k,v in
+            docopt(__doc__,version=version).iteritems()}
     main(**kw)
