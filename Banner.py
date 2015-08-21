@@ -149,14 +149,6 @@ def outputBanner(**kw):
 
     """The constructed heads and tails for lines for when they are output."""
     bare = kw.get('bare', False)
-    if bare:
-        head = ['', prefix + hue + 'm' + start + ' ']
-        tail = ['', prefix + normal + 'm']
-    else:
-        head = [start + ' ', prefix + hue + 'm' + divider+ '\n' + start + ' ']
-        tail = ['', '\n' + divider+ prefix + normal + 'm']
-
-    twidth = columns()
 
     """These values enable choice of head and tail."""
     listOfLines = []
@@ -170,8 +162,22 @@ def outputBanner(**kw):
             list(uname())[1]
             ,
             ]
+
     # VT100 emulator doesn't right-fill the first line with correct color.
-    listOfLines[0] = listOfLines[0]+' '*(twidth - lead - 1 - len(listOfLines[0]))
+    # Special case the first line, whether divider or bare.
+    if bare:
+        head = ['', prefix + hue + 'm' + start + ' ']
+        tail = ['', prefix + normal + 'm']
+        twidth = columns() - lead - 1 - len(listOfLines[0])
+        fill = ' '*twidth
+        listOfLines[0] = listOfLines[0]+fill
+    else:
+        head = [start + ' ', prefix + hue + 'm' + divider]
+        tail = ['', '\n' + divider+ prefix + normal + 'm']
+        twidth = columns() - len(divider)
+        fill = ' '*twidth
+        head[1] = head[1]+fill+'\n'+start+' '
+
     listLength = len(listOfLines)
     lastIndex = listLength - 1
 
