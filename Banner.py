@@ -39,17 +39,61 @@ Options:
 """
 
 from docopt     import (docopt)
+from os         import (uname, getlogin, open, ctermid, O_RDONLY, environ)
+from sys        import (stdout)
+from platform   import (system)
+from subprocess import (check_call)
+from struct     import (unpack)
 from pprint     import (pprint)
 from optparse   import (OptionParser)
-from os         import (uname, getlogin)
-from datetime   import (datetime)
-from sys        import (stdout)
 from string     import (join)
 from itertools  import (product)
-
-from terminalsize import (get_terminal_size)
+from datetime   import (datetime)
 
 version = "Banner.py 1.1.0"
+
+def columns():
+    """
+http://stackoverflow.com/questions/566746/
+how-to-get-console-window-width-in-python
+    """
+    osname = system()
+    if osname == 'Windows':
+        from ctypes import windll, create_string_buffer
+        handle = windll.kernel32.GetStdHandle(-12) # -11:stdout, -12:stderr
+        sbuf = create_string_buffer(22);
+        resource = windll.kernel32.GetConsoleScreenBufferInfo(handle, sbuf)
+        if resource:
+            (bx,by,cx,cy,wa,L,T,R,B,mx,my) = unpack("hhhhHhhhhhh", sbuf.raw)
+            return R-L+1;
+        else:
+            return check_call(['tput', 'cols'])
+    elif osname in ['Linux', 'Darwin'] or osname.startswith('CYGWIN'):
+        def linuxcols():
+            for fd in (0,1,2):
+                try:
+                    from fcntl import (ioctl)
+                    from termios import (TIOCGWINSZ)
+                    yx = unpack('hh', ioctl(fd, TIOCGWINSZ, '1234'))
+                    return int(yx[1])
+                except:
+                    pass
+            return 0
+        x = linuxcols()
+        if x:
+            return x
+        try:
+            with open(ctermid(), O_RDONLY) as fd:
+                yx = ioctl_GWINSZ(fd)
+                if yx:
+                    return yx[1]
+        except:
+            pass
+        try:
+            return int(environ['COLUMNS'])
+        except:
+            pass
+    return 80
 
 def outputBanner(**kw):
     """
@@ -112,7 +156,7 @@ def outputBanner(**kw):
         head = [start + ' ', prefix + hue + 'm' + divider+ '\n' + start + ' ']
         tail = ['', '\n' + divider+ prefix + normal + 'm']
 
-    (twidth, theight) = get_terminal_size()
+    twidth = columns()
 
     """These values enable choice of head and tail."""
     listOfLines = []
