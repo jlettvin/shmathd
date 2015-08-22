@@ -73,8 +73,10 @@ version = "Banner.py 1.1.0"
 
 def columns():
     """
-http://stackoverflow.com/questions/566746/
-how-to-get-console-window-width-in-python
+Achieving left-to-right color-fill in a terminal emulator needs window width.
+Finding that size depends on the OS.
+This code is logically identical to the code found at the following URL:
+stackoverflow.com/questions/566746/how-to-get-console-window-width-in-python
     """
     osname = system()
     if osname == 'Windows':
