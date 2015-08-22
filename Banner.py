@@ -14,7 +14,7 @@ Usage:
 
 Options:
     -b, --bare            Minimized output [default: False]
-    -c, --color=<COLOR>   Foreground/background 2 color spec [default: r-]
+    -c, --color=<COLOR>   Foreground/background 2 color spec [default: g0!]
     -d, --divider=<CHAR>  Char to use when drawing lines [default: *]
     -l, --lead=<LEAD>     Lead char count when drawing lines [default: 3]
     -w, --width=<COUNT>   Char count to use when drawing lines [default: 0]
@@ -27,7 +27,7 @@ lead:    Use a specific length (like 3) on text lines (*** your banner text)
 width:   Use a specific length (like 14) to form divider lines (**************)
 test:    Show example headers for all combinations of output colors.
 
-Default banner is "{login} {datetime} {machine}".
+Text for default banner is "{login} {datetime} {machine}".
 Divider lines are composed from multiple divider characters.
 Colors are from VT100 legacy support in most terminal emulators.
     0:black        r:red           g:green         y:yellow
@@ -38,13 +38,13 @@ Example 1: jlettvin$ ./Banner.py
 *** jlettvin 2015-08-22T13:42:50.985580 Jonathans-MacBook-Pro.local
 *******************************************************************************
 
-Example 2: jlettvin$ ./Banner.py -d _ -w 30 hello world
+Example 2: jlettvin$ ./Banner.py --divider _ --width 30 hello world
 ______________________________
 ___ hello
 ___ world
 ______________________________
 
-Example 2: jlettvin$ ./Banner.py -b "Lorem ipsum dolor sit amet"
+Example 2: jlettvin$ ./Banner.py --bare "Lorem ipsum dolor sit amet"
 *** Lorem ipsum dolor sit amet
 """
 
@@ -133,11 +133,10 @@ def outputBanner(**kw):
     xterm escape codes, including those used for color, are found here:
     http://en.wikipedia.org/wiki/ANSI_escape_code
     """
-    #if kw.get('verbose'): pprint(kw)
     colorList = {'0':0, 'r':1, 'g':2, 'y':3, 'b':4, 'm':5, 'c':6, 'w':7}
 
     """Fetch a validated color from kw or use the default white on green."""
-    color = kw.get('color', 'wg')
+    color = kw.get('color', 'g0!')
     hue = normal = '0'
     bold = 1 if len(color) == 3 and color[2] == '!' else 0
     if bold: color = color[0:2]
@@ -151,9 +150,8 @@ def outputBanner(**kw):
 
     """Fetch a validated line width from kw or use the default 70."""
     twidth = columns()
-    width = int(kw.get('width'))
+    width = int(kw.get('width',0))
     width = width if lead<= width <80 else twidth
-    #width = width if lead < width <= 80 else 70
 
     """Fetch a validated line character from kw or use the default *."""
     divider = kw.get('divider', '*')
