@@ -1,5 +1,5 @@
 SUBDIRS = daemon gpgpu
-BANNER=python ./Banner.py -b -c "w0!"
+BANNER=python ./Banner.py -b -t "w0!"
 
 all:	$(SUBDIRS)
 

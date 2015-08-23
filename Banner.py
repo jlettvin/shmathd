@@ -7,47 +7,50 @@ License: GPLv3 http://www.gnu.org/licenses/gpl-3.0.en.html
 Banner is used to output visually useful titles from the command-line.
 
 Usage:
-    Banner.py [-b] [-c <COLOR>] [-d <CHAR>] [-l <LEAD>] [-w <COUNT>] [<arg>...]
+    Banner.py [-b] [-c <COLS>] [-d <DRAW>] [-l <LEAD>] [-t <TINT>] [<arg>...]
     Banner.py (-h | --help)
-    Banner.py --test
+    Banner.py -u UNIT
     Banner.py --version
 
 Options:
-    -b, --bare            Minimized output [default: False]
-    -c, --color=<COLOR>   Foreground/background 2 color spec [default: g0!]
-    -d, --divider=<CHAR>  Char to use when drawing lines [default: *]
-    -l, --lead=<LEAD>     Lead char count when drawing lines [default: 3]
-    -w, --width=<COUNT>   Char count to use when drawing lines [default: 0]
-    -t, --test            Exhaustive test [default: False]
+    -b, --bare         Minimized output                     [default: False]
+    -t, --tint=<TINT>  Foreground/background 2 color pair   [default: g0!]
+    -d, --draw=<DRAW>  Char to use when drawing lines       [default: @]
+    -l, --lead=<LEAD>  Lead char count when printing banner [default: 3]
+    -c, --cols=<COLS>  Char count to use when drawing lines [default: 0]
+    -u, --unit=<UNIT>  Unit test example number             [default: 0]
 
-bare:    Eliminate the "divider" lines above and below the banner.
-color:   Use a VT100 foreground/background color pair in the banner.
-divider: Use a specific character (like _) to form divider lines (_______)
-lead:    Use a specific length (like 3) on text lines (*** your banner text)
-width:   Use a specific length (like 14) to form divider lines (**************)
-test:    Show example headers for all combinations of output colors.
+bare: Eliminate the "draw" character lines above and below the banner.
+tint: Use a VT100 foreground/background color pair in the banner.
+draw: Use a specific character (like _) to form draw lines (_______)
+lead: Use a specific length (like 3) on text lines (@@@ your banner text)
+cols: Use a specific length (like 14) to form draw lines (@@@@@@@@@@@@@@)
+unit: Show example output for various arguments.
+
+unit 1: Show example headers for all combinations of output color pairs.
 
 Text for default banner is "{login} {datetime} {machine}".
-Divider lines are composed from multiple divider characters.
+Draw lines are composed from multiple draw characters.
 Colors are from VT100 legacy support in most terminal emulators.
     0:black        r:red           g:green         y:yellow
     b:blue         m:magenta       c:cyan          w:white
 
 Example 1: jlettvin$ ./Banner.py
-*******************************************************************************
-*** jlettvin 2015-08-22T13:42:50.985580 Jonathans-MacBook-Pro.local
-*******************************************************************************
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+@@@ jlettvin 2015-08-22T13:42:50.985580 Jonathans-MacBook-Pro.local
+@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 
-Example 2: jlettvin$ ./Banner.py --divider _ --width 30 hello world
+Example 2: jlettvin$ ./Banner.py --draw _ --cols 30 hello world
 ______________________________
 ___ hello
 ___ world
 ______________________________
 
 Example 2: jlettvin$ ./Banner.py --bare "Lorem ipsum dolor sit amet"
-*** Lorem ipsum dolor sit amet
+@@@ Lorem ipsum dolor sit amet
 """
 
+###############################################################################
 from docopt     import (docopt)
 from os         import (uname, getlogin, open, ctermid, O_RDONLY, environ)
 from sys        import (stdout)
@@ -60,106 +63,97 @@ from string     import (join)
 from itertools  import (product)
 from datetime   import (datetime)
 
+###############################################################################
 version = "Banner.py 1.1.0"
+colorList = {'0':0, 'r':1, 'g':2, 'y':3, 'b':4, 'm':5, 'c':6, 'w':7} # VT100
 
-"""
-[--bare] \
-[--color=<COLOR>] \
-[--divider=<CHAR>] \
-[--lead=<LEAD>] \
-[--width=<COUNT>] \
-[<arg>...]
-"""
-
+###############################################################################
 def columns():
     """
-Achieving left-to-right color-fill in a terminal emulator needs window width.
-Finding that size depends on the OS.
+Achieving left-to-right color-fill in a VT100 terminal emulator
+depends on window width.  Finding that size depends on the OS.
 This code is logically identical to the code found at the following URL:
 stackoverflow.com/questions/566746/how-to-get-console-window-width-in-python
     """
     osname = system()
+    #__________________________________________________________________________
     if osname == 'Windows':
-        from ctypes import windll, create_string_buffer
+        # First try screen info resource call.
+        try:
+            from ctypes import windll, create_string_buffer
+        except:
+            return 80
         handle = windll.kernel32.GetStdHandle(-12) # -11:stdout, -12:stderr
-        sbuf = create_string_buffer(22);
-        resource = windll.kernel32.GetConsoleScreenBufferInfo(handle, sbuf)
+        buf = create_string_buffer(22);
+        windll.kernel32.GetConsoleScreenBufferInfo(handle, buf)
         if resource:
-            (bx,by,cx,cy,wa,L,T,R,B,mx,my) = unpack("hhhhHhhhhhh", sbuf.raw)
+            (bx,by,cx,cy,wa,L,T,R,B,mx,my) = unpack("hhhhHhhhhhh", buf.raw)
             return R-L+1;
-        else:
-            return check_call(['tput', 'cols'])
+        # If resource fails, try tput, or default to 80.
+        try:
+            return int(check_call(['tput', 'cols']))
+        except:
+            return 80
+    #__________________________________________________________________________
     elif osname in ['Linux', 'Darwin'] or osname.startswith('CYGWIN'):
-        def linuxcols():
-            for fd in (0,1,2):
-                try:
-                    from fcntl import (ioctl)
-                    from termios import (TIOCGWINSZ)
-                    yx = unpack('hh', ioctl(fd, TIOCGWINSZ, '1234'))
-                    return int(yx[1])
-                except:
-                    pass
-            return 0
-        x = linuxcols()
-        if x:
-            return x
-        try:
-            with open(ctermid(), O_RDONLY) as fd:
-                yx = ioctl_GWINSZ(fd)
-                if yx:
-                    return yx[1]
-        except:
-            pass
-        try:
-            return int(environ['COLUMNS'])
-        except:
-            pass
-    return 80
+        # First try IOCTL calls on stdio handles.
+        for fd in (0,1,2):
+            try:
+                from fcntl import (ioctl)
+                from termios import (TIOCGWINSZ)
+                yx = unpack('hh', ioctl(fd, TIOCGWINSZ, '1234'))
+                return int(yx[1])
+            except:
+                pass
+        # If IOCTL fails, try tput, or default to 80
+        return int(environ.get('COLUMNS', 80))
+    #__________________________________________________________________________
+    else:
+        # Neither Windows nor Sys V (unix, Mac, or cygwin).
+        return 80
 
-def outputBanner(**kw):
+###############################################################################
+def Banner(**kw):
     """
-    outputBanner outputs a colorful banner for which it is easy to scan.
-    @param kw['color'] is a color pair from colorList, defaulting to 'wg'.
-    @param kw['width'] is the width of the banner line divider.
-    @param kw['divider'] is the single character used in the line divider.
+    Banner outputs a colorful banner for which it is easy to scan.
+    @param kw['tint'] is a color pair from colorList, defaulting to 'wg!'.
+    @param kw['cols'] is the width of the banner line draw.
+    @param kw['draw'] is the single character used in the line draw.
     @param kw['output'] is the output stream to which the banner is written.
 
-    @param kw['color'] can have a 3rd character '!' meaning bold.
+    @param kw['tint'] can have a 3rd character '!' meaning bold.
 
-    The output color is changed to the new specified color.
-    A horizontal line of width divider characters is output.
-    The list of lines are output with a line start of divider characters.
-    A horizontal line of width divider characters is output.
-    The output color is changed to the xterm default colors.
+    The output color pair is changed to the new specified color pair.
+    A horizontal line of cols draw characters is output.
+    The list of lines are output with a line start of draw characters.
+    A horizontal line of cols draw characters is output.
+    The output color pair is changed to the xterm default color pairs.
 
     xterm escape codes, including those used for color, are found here:
     http://en.wikipedia.org/wiki/ANSI_escape_code
     """
-    colorList = {'0':0, 'r':1, 'g':2, 'y':3, 'b':4, 'm':5, 'c':6, 'w':7}
+    twidth = columns()              # Get terminal width (see function above).
 
+    #__________________________________________________________________________
     """Fetch a validated color from kw or use the default white on green."""
-    color = kw.get('color', 'g0!')
+    tint = kw.get('tint', 'g0!')  # See default value for --tint.
     hue = normal = '0'
-    bold = 1 if len(color) == 3 and color[2] == '!' else 0
-    if bold: color = color[0:2]
-    if len(color) == 2:
-        if colorList.has_key(color[0]) and colorList.has_key(color[1]):
-            hue = '%d;3%d;4%d' % (bold, colorList[color[0]], colorList[color[1]])
+    bold = int(len(tint) == 3 and tint[2] == '!')
+    if len(tint) > 1:
+        if colorList.has_key(tint[0]) and colorList.has_key(tint[1]):
+            hue = '%d;3%d;4%d' % (bold, colorList[tint[0]], colorList[tint[1]])
 
     """Fetch a validated lead width from kw or use the default 3."""
-    lead = int(kw.get('lead', 3))
-    lead = lead if 0 < lead <= 8 else 3
+    lead = max(3, min(int(kw.get('lead', 8)), 8)) # See --lead default value.
 
-    """Fetch a validated line width from kw or use the default 70."""
-    twidth = columns()
-    width = int(kw.get('width',0))
-    width = width if lead<= width <80 else twidth
+    """Fetch a validated line width from kw or use the default 0."""
+    width = max(twidth, min(int(kw.get('cols',0)), twidth))
 
-    """Fetch a validated line character from kw or use the default *."""
-    divider = kw.get('divider', '*')
-    divider = divider if isinstance(divider, str) and len(divider) == 1 else '*'
-    start = divider*lead
-    divider *= width
+    """Fetch a validated line character from kw or use the default @."""
+    draw = kw.get('draw', '@')
+    draw = draw if isinstance(draw, str) and len(draw) == 1 else '@'
+    start = draw*lead
+    divider = draw*width
 
     """Fetch a validated output stream from kw or use the default sys.stdout."""
     output = kw.get('output', stdout)
@@ -171,6 +165,7 @@ def outputBanner(**kw):
     """The constructed heads and tails for lines for when they are output."""
     bare = kw.get('bare', False)
 
+    #__________________________________________________________________________
     """These values enable choice of head and tail."""
     listOfLines = []
     listOfLines += kw.get('arg', [])
@@ -183,6 +178,7 @@ def outputBanner(**kw):
             ,
             ]
 
+    #__________________________________________________________________________
     # VT100 emulator doesn't right-fill the first line with correct color.
     # Special case the first line, whether divider or bare.
     if bare:
@@ -201,38 +197,52 @@ def outputBanner(**kw):
     listLength = len(listOfLines)
     lastIndex = listLength - 1
 
+    #__________________________________________________________________________
     """Output the list of lines with appropriate heads and tails."""
     for index in range(listLength):
         print>>output, head[index==0 or bare]+listOfLines[index]+tail[index==lastIndex]
 
+###############################################################################
 if __name__ == '__main__':
-    def test():
+
+    ###########################################################################
+    def test1():
         output = stdout
         print>>output, 'hello'
         # Here is an example using no keywords (all defaults).
-        outputBanner(arg=['colorful', 'multihued'])
+        Banner(arg=['colorful', 'multihued'])
         # Here is an example using some keywords (some defaults).
-        outputBanner(arg=['and', 'useful'], color = 'my', divider = '=', width = 10)
+        Banner(arg=['and', 'useful'], tint = 'my', draw = '=', cols = 10)
         # Here is an example using all keywords.
-        outputBanner(
+        Banner(
             arg=['gift for all', 'to make banners'],
-            color = 'ym', divider = '~', lead = 5, width = 80, output = output)
+            tint = 'ym', draw = '~', lead = 5, cols = 80, output = output)
         print>>output, 'world'
         # Now try all possible non-matching color pairs.
         for color in list(product('0rgybmcw', repeat=2)):
             if color[0] == color[1]: continue
             normal = join(color, '')
             bolder = normal + '!'
-            outputBanner(arg=[normal], color = normal)
-            outputBanner(arg=[bolder], color = bolder)
-        outputBanner(arg=[])
-        outputBanner(arg=['bare'], bare=True)
+            Banner(arg=[normal], tint = normal)
+            Banner(arg=[bolder], tint = bolder)
+        Banner(arg=[])
+        Banner(arg=['bare'], bare=True)
 
+    ###########################################################################
+    units = [None, test1]
+
+    ###########################################################################
     def main(**kwargs):
-        test() if kwargs.get('test') else outputBanner(**kwargs)
+        unit = int(kwargs.get('unit', 0))
+        units[unit]() if 0 < unit < len(units) else Banner(**kwargs)
 
+    ###########################################################################
     kwargs = {
             k.replace('-','').replace('<','').replace('>',''): v
             for k,v in
             docopt(__doc__,version=version).iteritems()}
+
+    ###########################################################################
     main(**kwargs)
+
+###############################################################################

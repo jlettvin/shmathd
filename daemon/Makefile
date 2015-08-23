@@ -4,7 +4,7 @@
 # -Wno-format-security		ignore protections for instruction buffers
 # -Wno-self-assign			ignore argc=argc and argv=argv used to pass syntax
 CFLAGS=-Wall -Wno-format-security -Wno-self-assign
-BANNER=python ../Banner.py -b -c "wg!"
+BANNER=python ../Banner.py -b -t "wg!"
 
 .PHONY: all
 all:	shmathd shm_server shm_client
