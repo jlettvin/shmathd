@@ -1,7 +1,9 @@
 #!/usr/bin/env make
-MODULE=gpu11
-BANNER=python ../Banner.py -b -t "wb!"
+HOME=..
+UTIL=$(HOME)/util
+BANNER=python $(UTIL)/Banner.py -b -t "wb!"
 
+MODULE=gpu11
 CHECKERIMG=img/checkers_0060_01.png
 NOISYIMG=img/gray_0.03_0.30.png
 IMGS=$(CHECKERIMG)

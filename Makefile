@@ -1,5 +1,7 @@
-SUBDIRS = daemon gpgpu
-BANNER=python ./Banner.py -b -t "w0!"
+HOME=.
+UTIL=$(HOME)/util
+SUBDIRS=daemon gpgpu
+BANNER=python $(UTIL)/Banner.py -b -t "w0!"
 
 all:	$(SUBDIRS)
 

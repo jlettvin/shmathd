@@ -1,10 +1,14 @@
 #!/usr/bin/env make
+HOME=..
+UTIL=$(HOME)/util
+BANNER=python $(UTIL)/Banner.py -b -t "wg!"
+
+#!/usr/bin/env make
 
 # -Wall 					check for all warnings and errors
 # -Wno-format-security		ignore protections for instruction buffers
 # -Wno-self-assign			ignore argc=argc and argv=argv used to pass syntax
 CFLAGS=-Wall -Wno-format-security -Wno-self-assign
-BANNER=python ../Banner.py -b -t "wg!"
 
 .PHONY: all
 all:	shmathd shm_server shm_client
