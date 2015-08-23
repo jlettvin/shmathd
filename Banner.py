@@ -14,10 +14,10 @@ Usage:
 
 Options:
     -b, --bare         Minimized output                     [default: False]
-    -t, --tint=<TINT>  Foreground/background 2 color pair   [default: g0!]
+    -c, --cols=<COLS>  Char count to use when drawing lines [default: 0]
     -d, --draw=<DRAW>  Char to use when drawing lines       [default: @]
     -l, --lead=<LEAD>  Lead char count when printing banner [default: 3]
-    -c, --cols=<COLS>  Char count to use when drawing lines [default: 0]
+    -t, --tint=<TINT>  Foreground/background 2 color pair   [default: g0!]
     -u, --unit=<UNIT>  Unit test example number             [default: 0]
 
 bare: Eliminate the "draw" character lines above and below the banner.
@@ -53,7 +53,7 @@ Example 2: jlettvin$ ./Banner.py --bare "Lorem ipsum dolor sit amet"
 ###############################################################################
 from docopt     import (docopt)
 from os         import (uname, getlogin, open, ctermid, O_RDONLY, environ)
-from sys        import (stdout)
+from sys        import (stdout, argv)
 from platform   import (system)
 from subprocess import (check_call)
 from struct     import (unpack)
@@ -65,7 +65,8 @@ from datetime   import (datetime)
 
 ###############################################################################
 version = "Banner.py 1.1.0"
-colorList = {'0':0, 'r':1, 'g':2, 'y':3, 'b':4, 'm':5, 'c':6, 'w':7} # VT100
+tintList = {'0':0, 'r':1, 'g':2, 'y':3, 'b':4, 'm':5, 'c':6, 'w':7} # VT100
+optsList = {'b':'bare', 'c':'cols', 'd':'draw', 'l':'lead', 't':'tint'}
 
 ###############################################################################
 def columns():
@@ -116,7 +117,7 @@ stackoverflow.com/questions/566746/how-to-get-console-window-width-in-python
 def Banner(**kw):
     """
     Banner outputs a colorful banner for which it is easy to scan.
-    @param kw['tint'] is a color pair from colorList, defaulting to 'wg!'.
+    @param kw['tint'] is a color pair from tintList, defaulting to 'wg!'.
     @param kw['cols'] is the width of the banner line draw.
     @param kw['draw'] is the single character used in the line draw.
     @param kw['output'] is the output stream to which the banner is written.
@@ -132,6 +133,7 @@ def Banner(**kw):
     xterm escape codes, including those used for color, are found here:
     http://en.wikipedia.org/wiki/ANSI_escape_code
     """
+    timestamp = datetime.now().isoformat()
     twidth = columns()              # Get terminal width (see function above).
 
     #__________________________________________________________________________
@@ -140,8 +142,8 @@ def Banner(**kw):
     hue = normal = '0'
     bold = int(len(tint) == 3 and tint[2] == '!')
     if len(tint) > 1:
-        if colorList.has_key(tint[0]) and colorList.has_key(tint[1]):
-            hue = '%d;3%d;4%d' % (bold, colorList[tint[0]], colorList[tint[1]])
+        if tintList.has_key(tint[0]) and tintList.has_key(tint[1]):
+            hue = '%d;3%d;4%d' % (bold, tintList[tint[0]], tintList[tint[1]])
 
     """Fetch a validated lead width from kw or use the default 3."""
     lead = max(3, min(int(kw.get('lead', 8)), 8)) # See --lead default value.
@@ -167,16 +169,9 @@ def Banner(**kw):
 
     #__________________________________________________________________________
     """These values enable choice of head and tail."""
-    listOfLines = []
-    listOfLines += kw.get('arg', [])
-    listOfLines = listOfLines if listOfLines else [
-            getlogin()
-            +' '+
-            datetime.now().isoformat()
-            +' '+
-            list(uname())[1]
-            ,
-            ]
+    listOfLines = kw.get('arg', [])
+    defaultLine = [getlogin() +' '+ timestamp +' '+ list(uname())[1] ,]
+    listOfLines = listOfLines if listOfLines else defaultLine
 
     #__________________________________________________________________________
     # VT100 emulator doesn't right-fill the first line with correct color.
@@ -189,10 +184,10 @@ def Banner(**kw):
         listOfLines[0] = listOfLines[0]+fill
     else:
         head = [start + ' ', prefix + hue + 'm' + divider]
-        tail = ['', '\n' + divider+ prefix + normal + 'm']
+        tail = ['', '\n' + divider + prefix + normal + 'm']
         size = twidth - len(divider)
         fill = '' if size < 0 else ' '*size
-        head[1] = head[1]+fill+'\n'+start+' '
+        head[1] = head[1] + fill + '\n' + start + ' '
 
     listLength = len(listOfLines)
     lastIndex = listLength - 1
@@ -204,6 +199,19 @@ def Banner(**kw):
 
 ###############################################################################
 if __name__ == '__main__':
+
+    ###########################################################################
+    def command(unit, **kw):
+        """command shows what the command-line would look like for **kw."""
+        text = 'UNIT TEST %d$ ' % (unit) + argv[0]
+        for k,w in kw.iteritems():
+            k = optsList.get(k, k)
+            text += ' --'+str(k)+'='+str(w) if k != 'arg' else ''
+        args = kw.get('arg', [])
+        if args:
+            for arg in args:
+                text += ' "%s"' % arg
+        return text
 
     ###########################################################################
     def test1():
@@ -229,7 +237,19 @@ if __name__ == '__main__':
         Banner(arg=['bare'], bare=True)
 
     ###########################################################################
-    units = [None, test1]
+    def test2():
+        args = {'arg':['hello', 'world'], 'lead':'3'}
+        print command(2, **args)
+        Banner(**args)
+
+    ###########################################################################
+    def test3():
+        args = {'arg':['hello world'], 'lead':'3', 'bare':True, 'tint':'yb!'}
+        print command(3, **args)
+        Banner(**args)
+
+    ###########################################################################
+    units = [None, test1, test2, test3]
 
     ###########################################################################
     def main(**kwargs):
