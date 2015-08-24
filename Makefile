@@ -6,6 +6,7 @@ UTIL=$(HOME)/util
 SUBDIRS=daemon gpgpu
 BANNER=python $(UTIL)/Banner.py -b -t "w0!"
 MESSAGE=$(filter-out commit,$(message))
+BUILDID=$(shell date +%Y%m%d-%H:%M:%S)
 
 ###############################################################################
 all:	$(SUBDIRS)
@@ -36,10 +37,11 @@ commit:
 ifeq ("$(MESSAGE)", "")
 	@echo "Usage: make commit message='{commit-message}'".
 else
-	git add .
-	git commit \
-		--author="Jonathan D. Lettvin <jlettvin@gmail.com>" \
-		-a \
-		-m '$(MESSAGE)'
-	git push --recurse-submodules=on-demand;
+	@echo "Causes problems."
+	#git add .
+	#git commit \
+		#--author="Jonathan D. Lettvin <jlettvin@gmail.com>" \
+		#-a \
+		#-m '$(BUILDID) $(MESSAGE)'
+	#git push --recurse-submodules=on-demand;
 endif
