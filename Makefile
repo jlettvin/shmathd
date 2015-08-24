@@ -2,9 +2,8 @@
 
 ###############################################################################
 HOME=.
-UTIL=$(HOME)/util
 SUBDIRS=daemon gpgpu
-BANNER=python $(UTIL)/Banner.py -b -t "w0!"
+BANNER=python $(HOME)/Banner/Banner.py -b -t "w0!"
 MESSAGE=$(filter-out commit,$(message))
 BUILDID=$(shell date +%Y%m%d-%H:%M:%S)
 

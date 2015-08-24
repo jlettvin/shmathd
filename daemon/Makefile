@@ -1,7 +1,6 @@
 #!/usr/bin/env make
 HOME=..
-UTIL=$(HOME)/util
-BANNER=python $(UTIL)/Banner.py -b -t "wg!"
+BANNER=python $(HOME)/Banner/Banner.py -b -t "wg!"
 
 #!/usr/bin/env make
 

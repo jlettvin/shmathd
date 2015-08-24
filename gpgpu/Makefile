@@ -1,7 +1,6 @@
 #!/usr/bin/env make
 HOME=..
-UTIL=$(HOME)/util
-BANNER=python $(UTIL)/Banner.py -b -t "wb!"
+BANNER=python $(HOME)/Banner/Banner.py -b -t "wb!"
 
 MODULE=gpu11
 CHECKERIMG=img/checkers_0060_01.png
