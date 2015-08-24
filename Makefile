@@ -1,3 +1,4 @@
+#!/usr/bin/env make
 HOME=.
 UTIL=$(HOME)/util
 SUBDIRS=daemon gpgpu
