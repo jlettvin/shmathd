@@ -37,6 +37,9 @@ ifeq ("$(MESSAGE)", "")
 	@echo "Usage: make commit message='{commit-message}'".
 else
 	git add .
-	git commit -a -m '$(MESSAGE)'
+	git commit \
+		--author="Jonathan D. Lettvin <jlettvin@gmail.com>" \
+		-a \
+		-m '$(MESSAGE)'
 	git push --recurse-submodules=on-demand;
 endif
