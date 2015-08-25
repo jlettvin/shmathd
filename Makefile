@@ -1,4 +1,14 @@
 #!/usr/bin/env make
+###############################################################################
+# __date__       = "20150815"
+# __author__     = "jlettvin"
+# __maintainer__ = "jlettvin"
+# __email__      = "jlettvin@gmail.com"
+# __copyright__  = "Copyright(c) 2015 Jonathan D. Lettvin, All Rights Reserved"
+# __license__    = "Trade Secret"
+# __status__     = "Production"
+# __version__    = "0.0.1"
+###############################################################################
 
 ###############################################################################
 HOME=.
@@ -25,7 +35,7 @@ gpgpu:
 ###############################################################################
 .PHONY: clean
 clean:
-	@$(BANNER) "clean daemon and gpgpu directories"
+	@$(BANNER) "clean project"
 	@cd daemon && $(MAKE) clean
 	@cd gpgpu  && $(MAKE) clean
 

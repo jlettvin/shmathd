@@ -1,29 +1,34 @@
 #!/usr/bin/env make
+###############################################################################
+# Makefile
+# __date__       = "20150815"
+# __author__     = "jlettvin"
+# __maintainer__ = "jlettvin"
+# __email__      = "jlettvin@gmail.com"
+# __copyright__  = "Copyright(c) 2015 Jonathan D. Lettvin, All Rights Reserved"
+# __license__    = "Trade Secret"
+# __status__     = "Production"
+# __version__    = "0.0.1"
+###############################################################################
+# git submodule add https://github.com/jlettvin/Banner
+###############################################################################
+
+###############################################################################
 HOME=..
 BANNER=python $(HOME)/Banner/Banner.py -b -t "wb!"
-
 MODULE=gpu11
 CHECKERIMG=img/checkers_0060_01.png
 NOISYIMG=img/gray_0.03_0.30.png
 IMGS=$(CHECKERIMG)
-
 MAKES=$(CHECKERIMG) $(NOISYIMG)
 
-# Makefile
-# __date__       = "20130101"
-# __author__     = "jlettvin"
-# __maintainer__ = "jlettvin"
-# __email__      = "jlettvin@gmail.com"
-# __copyright__  = "Copyright(c) 2013-2015 Jonathan D. Lettvin, All Rights Reserved"
-# __license__    = "Trade Secret"
-# __status__     = "Production"
-# __version__    = "0.0.1"
-
+###############################################################################
 .PHONY: all
 all:	$(MODULE).py $(MAKES) Makefile
 	@$(BANNER) "run $(MODULE)"
 	@./$(MODULE).py
 
+###############################################################################
 .PHONY: clean
 clean:
 	@$(BANNER) "clean gpgpu directory"
@@ -31,11 +36,13 @@ clean:
 	@rm -f RPN_CUDA_*.txt RPN_sourceCode.c
 	@rm -f img/target.png
 
+###############################################################################
 $(CHECKERIMG):	make_checkers.py Makefile
 	@$(BANNER) "make checkers figures"
 	@mkdir -p -m 777 img
 	@for i in 1 2 3 4 5 6 10 12 15 20 30; do ./$< 60 $$i; done
 
+###############################################################################
 $(NOISYIMG):	make_noisyboundary.py Makefile
 	@$(BANNER) "make noisy figures"
 	@mkdir -p -m 777 img
@@ -45,4 +52,6 @@ $(NOISYIMG):	make_noisyboundary.py Makefile
 		done; \
 	done
 
+###############################################################################
 include include/tgz.mk
+###############################################################################
