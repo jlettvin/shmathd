@@ -17,8 +17,8 @@
 ###############################################################################
 HOME=..
 BANNER=python $(HOME)/Banner/Banner.py -b -t "wg!"
-
 CFLAGS=-Wall -Wno-format-security -Wno-self-assign
+PYPATH=$(PYTHONPATH):$(HOME)/Banner
 
 ###############################################################################
 .PHONY: all

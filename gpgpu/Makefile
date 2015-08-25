@@ -21,12 +21,13 @@ CHECKERIMG=img/checkers_0060_01.png
 NOISYIMG=img/gray_0.03_0.30.png
 IMGS=$(CHECKERIMG)
 MAKES=$(CHECKERIMG) $(NOISYIMG)
+PYPATH=$(HOME)/Banner
 
 ###############################################################################
 .PHONY: all
 all:	$(MODULE).py $(MAKES) Makefile
 	@$(BANNER) "run $(MODULE)"
-	@./$(MODULE).py
+	@PYTHONPATH=$(PYPATH) python $(MODULE).py
 
 ###############################################################################
 .PHONY: clean
@@ -35,6 +36,7 @@ clean:
 	@rm -f img/checkers*.png img/gray*.png
 	@rm -f RPN_CUDA_*.txt RPN_sourceCode.c
 	@rm -f img/target.png
+	@rm -f *.pep8 *.pylint *.pyflakes
 
 ###############################################################################
 $(CHECKERIMG):	make_checkers.py Makefile
@@ -51,6 +53,12 @@ $(NOISYIMG):	make_noisyboundary.py Makefile
 		do ./$< $$i $$j; \
 		done; \
 	done
+
+###############################################################################
+lint: $(MODULE).py
+	@-pep8 $< > $<.pep8 2>&1
+	@-pylint $< > $<.pylint 2>&1
+	@-pyflakes $< > $<.pyflakes 2>&1
 
 ###############################################################################
 include include/tgz.mk

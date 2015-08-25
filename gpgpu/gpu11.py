@@ -1,32 +1,41 @@
 #!/usr/bin/env python
-
-#TODO JMP JE JG JL JGE JLE SETJMP LONGJMP DATA LABEL
-#TODO discover how to keep code resident and send it new data
-#TODO discover how to reference other pixel data for convolution/correlation
-#TODO Use Tower of Hanoi separate data stacks for each type and
-#     make different instructions (or modifiers) for each.
-#TODO test whether the BLOCKSIZE approach interferes with referencing
+###############################################################################
+# TODO JMP JE JG JL JGE JLE SETJMP LONGJMP DATA LABEL
+# TODO discover how to keep code resident and send it new data
+# TODO discover how to reference other pixel data for convolution/correlation
+# TODO Use Tower of Hanoi separate data stacks for each type and
+#      make different instructions (or modifiers) for each.
+# TODO test whether the BLOCKSIZE approach interferes with referencing
 # Perhaps convolve a checkerboard with a Gaussian blur.
+###############################################################################
 
-import pycuda.autoinit  # needed for cuda.memalloc
-from pycuda.driver import (mem_alloc, memcpy_htod, memcpy_dtoh)
-from pycuda.compiler import (SourceModule)
+"""gpu11.py implements an RPN kernel constructor.
+"""
 
+import re
+
+from sys import (argv, path)
 from PIL import (Image)
 from time import (time)
 from numpy import (array, float32, int32, empty_like, uint8)
+path.append('../Banner')
+# from pprint import pprint
+from Banner import (Banner)
+# from operator import (add, sub, mul, div)
 
-from operator import (add, sub, mul, div)
-from pprint import pprint
+# pycuda imports do not pass pylint tests.
+# pycuda.autoinit is needed for cuda.memalloc.
+import pycuda.autoinit  # noqa
+from pycuda.driver import (mem_alloc, memcpy_htod, memcpy_dtoh)  # noqa
+from pycuda.compiler import (SourceModule)  # noqa
 
-import re
-import sys
 
-def whereami():
-    line = "eval '__line__'"
-
+###############################################################################
 class CUDAMathConstants(object):
+    """Initialize math constants for the interpreter."""
+    ###########################################################################
     def __init__(self, **kw):
+        """Initialize math constants class."""
         filename = kw.get(
             'filename',
             '/usr/local/cuda-5.5/targets/x86_64-linux/include/'
@@ -45,18 +54,22 @@ class CUDAMathConstants(object):
                         if len(token) != 3:
                             continue
                         define, name, value = token
-                        if not '.' in value:
+                        if '.' not in value:
                             continue
-                        #if name.endswith('_HI') or name.endswith('_LO'):
-                            #continue
+                        # if name.endswith('_HI') or name.endswith('_LO'):
+                            # continue
                         self.identified[name] = value
                         print>>manual, '%24s: %s' % (name, value)
             self.hrule(manual)
 
+    ###########################################################################
     def hrule(self, stream):
-            print>>stream, '#' + '_' * 78
+        """Debugging: output horizontal rule."""
+        print>>stream, '#' + '_' * 78
 
+    ###########################################################################
     def functions(self):
+        """Prepare function handling."""
         end = '/*************************************************************/'
         text = ''
         for token in self.identified.iteritems():
@@ -70,20 +83,27 @@ class CUDAMathConstants(object):
             ))
         return text
 
+    ###########################################################################
     def cases(self):
-        case = []
-        count = 0
+        """Prepare case handling."""
+        # case = []
+        # count = 0
         for token in self.identified.iteritems():
             name, value = token
-            #case += ['error = RPN_%s_RPN(&the)' % (name), ]
+            # case += ['error = RPN_%s_RPN(&the)' % (name), ]
             self.caselist += ['{ *dstack++ = %s; }' % (name), ]
         return self.caselist
 
+
+###############################################################################
 class CUDAMathFunctions(object):
+    """CUDAMathFunctions class"""
 
     found = set()
 
+    ###########################################################################
     def __init__(self, **kw):
+        """CUDAMathFunctions __init__"""
         clip = kw.get(
             'clip',
             True)
@@ -117,13 +137,13 @@ class CUDAMathFunctions(object):
                         else:
                             CUDAMathFunctions.found.add(name)
                         if signatureAB in function:
-                            #print 'AB', function
+                            # print 'AB', function
                             if clip:
-                                name = name[:-1] # remove f
+                                name = name[:-1]  # remove f
                             self.two[name] = name
                             self.caselist += ['{ ab %s(a, b); }' % (name), ]
                         elif signatureA_ in function:
-                            #print 'A_', function
+                            # print 'A_', function
                             self.one[name] = name
                             self.caselist += ['{ a_ %s(a); }' % (name), ]
                         else:
@@ -131,57 +151,84 @@ class CUDAMathFunctions(object):
             print>>manual, '# functions of one float parameter'
             print>>manual, '# pop A and push fun(A).'
             self.hrule(manual)
-            for cuda, internal in self.one.iteritems():
-                print>>manual, 'float %s(float) // %s' % (internal, name)
+            for cuda, inner in self.one.iteritems():
+                print>>manual, 'float %s(float) // %s' % (inner, name)
             self.hrule(manual)
             print>>manual, '# functions of two float parameters'
             print>>manual, '# pop A, pop B and push fun(A, B)'
             self.hrule(manual)
-            for cuda, internal in self.two.iteritems():
-                print>>manual, 'float %s(float, float) // %s' % (internal, name)
+            for cuda, inner in self.two.iteritems():
+                print>>manual, 'float %s(float, float) // %s' % (inner, name)
             self.hrule(manual)
 
+    ###########################################################################
     def hrule(self, stream):
-            print>>stream, '#' + '_' * 78
+        """CUDAMathFunctions hrule"""
+        print>>stream, '#' + '_' * 78
 
+    ###########################################################################
     def functions(self):
+        """CUDAMathFunctions functions"""
         return ''
 
+    ###########################################################################
     def cases(self):
+        """CUDAMathFunctions cases"""
         return self.caselist
 
+
+###############################################################################
 class Timing(object):
+    """Timing class"""
     text = ''
+
+    ###########################################################################
     def __init__(self, msg=''):
+        """Timing __init__"""
         self.msg = msg
+
+    ###########################################################################
     def __enter__(self):
+        """Timing __enter__"""
         self.t0 = time()
-    def __exit__(self, type, value, tb):
+
+    ###########################################################################
+    def __exit__(self, typ, value, tb):
+        """Timing __exit__"""
         Timing.text += '%40s: %e\n' % (self.msg, (time() - self.t0))
 
-class Function(object):
 
+###############################################################################
+class Function(object):
+    """Function class"""
+
+    ###########################################################################
     def __init__(self, **kw):
+        """Function __init__"""
         self.index = kw.get('start', 0)
-        self.name={}
-        self.body=""
-        self.case=""
+        self.name = {}
+        self.body = ""
+        self.case = ""
         self.tab = " " * 12
         self.final = [0]
         self.code = {'#%d' % d: d for d in range(kw.get('bss', 64))}
         self.bss = self.code.keys()
 
-        for i, name in enumerate(kw.get('handcode', [
-            'swap', 'add', 'mul', 'ret', 'sub', 'div',
-            'call', 'noop', 'invert', 'push', 'pop', 'jmp',
-            ])):
+        for i, name in enumerate(
+                kw.get('handcode', [
+                    'swap', 'add', 'mul', 'ret', 'sub', 'div',
+                    'call', 'noop', 'invert', 'push', 'pop', 'jmp', ])):
             self.add_name(name, i)
 
+    ###########################################################################
     def add_name(self, name, index):
+        """Function add_name"""
         self.code[name] = index
         self.name[index] = name
 
-    def assemble(self, source, data, **kw):
+    ###########################################################################
+    def assemble(self, source, DATA, **kw):
+        """Function assemble"""
 
         self.label = {'code': [], 'data': [], }
         self.data = []
@@ -193,42 +240,42 @@ class Function(object):
         self.final = []
         extra = 0
 
-        for offset, name in enumerate(data):
+        for offset, name in enumerate(DATA):
             name = str(name)
             label, colon, datum = name.partition(':')
             if colon:
                 self.dlabels[label] = offset + extra
                 self.backdlabels[offset + extra] = label
                 self.label['data'] += [label, ]
-                #print '\t\t\tdata', label, offset + extra
+                # print '\t\t\tdata', label, offset + extra
             else:
                 datum = label
             values = datum.split()
             self.data += values
             extra += len(values) - 1
-        #print 'A0', self.backclabels
-        #print 'B0', self.clabels
+        # print 'A0', self.backclabels
+        # print 'B0', self.clabels
 
         for offset, name in enumerate(source):
             name = re.sub(' \t', '', name)
             label, colon, opname = name.partition(':')
             if not colon:
                 label, opname = None, label
-                #print 'name = %s', (opname)
+                # print 'name = %s', (opname)
             else:
-                assert not label in self.clabels.keys()
+                assert label not in self.clabels.keys()
                 self.clabels[label] = offset
                 self.backclabels[offset] = label
                 self.label['code'] += [label, ]
-                #print '\t\t\tcode', label
+                # print '\t\t\tcode', label
 
             if opname in self.code.keys():
                 self.final += [self.code[opname], ]
-                #print 'instruction'
+                # print 'instruction'
             else:
-                self.final += [quit, ]
+                self.final += [stop, ]
                 fixups[opname] = fixups.get(opname, []) + [offset, ]
-                #print 'opname:fixup = %s/%s' %(opname, offset)
+                # print 'opname:fixup = %s/%s' %(opname, offset)
 
         for label, offsets in fixups.iteritems():
             if not label:
@@ -237,45 +284,47 @@ class Function(object):
                 for offset in offsets:
                     self.final[offset] = self.clabels[label]
 
-        if (not self.final) or (self.final[-1] != quit):
-            self.final += [quit, ]
-        #print 'A1', self.backclabels
-        #print 'B1', self.clabels
+        if (not self.final) or (self.final[-1] != stop):
+            self.final += [stop, ]
+        # print 'A1', self.backclabels
+        # print 'B1', self.clabels
         if kw.get('verbose', False):
-            #print source
-            #print self.final
+            # print source
+            # print self.final
             direct = False
-            #print '(',
+            # print '(',
             for code in self.final:
                 if not direct:
                     name = self.name[code]
-                    #print "'%s'," % (name),
+                    # print "'%s'," % (name),
                     if name in ('push', 'call', 'jmp'):
                         direct = True
                 else:
                     label = self.backclabels.get(code, None)
                     if offset is None:
-                        #print label, "'#%d'" % (code),
+                        # print label, "'#%d'" % (code),
                         pass
                     else:
-                        #print "'#%d'," % (code),
+                        # print "'#%d'," % (code),
                         pass
                     direct = False
-            #print ')'
-        #print 'A2', self.backclabels
-        #print 'B2', self.clabels
+            # print ')'
+        # print 'A2', self.backclabels
+        # print 'B2', self.clabels
 
+    ###########################################################################
     def disassemble(self, **kw):
+        """Function disassemble"""
         verbose = kw.get('verbose', False)
         if not verbose:
             return
         direct = False
-        #print self.data
-        #print self.label['data']
-        #print self.backclabels
+        # print self.data
+        # print self.label['data']
+        # print self.backclabels
         print '#'*79
         print '.data'
-        #print '#', self.data
+        # print '#', self.data
         nl = False
         comma = ''
         for offset, datum in enumerate(self.data):
@@ -294,7 +343,7 @@ class Function(object):
         print
         print '#'*79
         print '.code'
-        #print '#', self.final
+        # print '#', self.final
         for offset, code in enumerate(self.final):
             if direct:
                 clabel = self.backclabels.get(code, None)
@@ -316,12 +365,16 @@ class Function(object):
         print '.end'
         print '#'*79
 
+    ###########################################################################
     def add_body(self, fmt, **kw):
+        """Function add_body"""
         cmt = '/*************************************************************/'
         base = "__device__ int " + cmt + "\nRPN_%(name)s_RPN(Thep the) "
         self.body += ((base + fmt) % kw) + '\n'
 
+    ###########################################################################
     def add_case(self, **kw):
+        """Function add_case"""
         k = {'number': self.index}
         k.update(kw)
         casefmt = "case %(number)d: error = RPN_%(name)s_RPN(&the); break;\n"
@@ -329,25 +382,35 @@ class Function(object):
         self.code[kw['name']] = self.index
         self.add_name(kw['name'], self.index)
 
+    ###########################################################################
     def add_last(self):
+        """Function add_last"""
         self.index += 1
 
+    ###########################################################################
     def unary(self, **kw):
+        """Function unary"""
         self.add_case(**kw)
         self.add_body("{ A_ %(name)s(A); return 0; }", **kw)
         self.add_last()
 
+    ###########################################################################
     def binary(self, **kw):
+        """Function binary"""
         self.add_case(**kw)
         self.add_body("{ AB %(name)s(A,B); return 0; }", **kw)
         self.add_last()
 
-def CudaRPN(inPath , outPath, mycode, mydata, **kw):
+
+###############################################################################
+def CudaRPN(inPath, outPath, mycode, mydata, **kw):
+    """CudaRPN implements the interface to the CUDA run environment.
+    """
     verbose = kw.get('verbose', False)
-    BLOCK_SIZE = 1024 # Kernel grid and block size
+    BLOCK_SIZE = 1024  # Kernel grid and block size
     STACK_SIZE = 64
-    OFFSETS = 64
-    unary_operator_names = {'plus':'+', 'minus':'-'}
+    # OFFSETS = 64
+    # unary_operator_names = {'plus': '+', 'minus': '-'}
     function = Function(
         start=len(hardcase),
         bss=64,
@@ -369,10 +432,10 @@ def CudaRPN(inPath , outPath, mycode, mydata, **kw):
             d_dx = mem_alloc(dx.nbytes)
             memcpy_htod(d_dx, dx)
         with Timing('Kernel execution time'):
-            block = (BLOCK_SIZE,1,1)
+            block = (BLOCK_SIZE, 1, 1)
             checkSize = int32(im.size[0]*im.size[1])
-            grid = (int(im.size[0]*im.size[1]/BLOCK_SIZE)+1,1,1)
-            kernel = include + head + function.body + convolve + tail
+            grid = (int(im.size[0] * im.size[1] / BLOCK_SIZE) + 1, 1, 1)
+            kernel = INCLUDE + HEAD + function.body + convolve + TAIL
             sourceCode = kernel % {
                 'pixelwidth': 3,
                 'stacksize': STACK_SIZE,
@@ -393,14 +456,15 @@ def CudaRPN(inPath , outPath, mycode, mydata, **kw):
     if verbose:
         print '%40s: %s%s' % ('Target image', outPath, im.size)
         print Timing.text
- 
-include = """// RPN_sourceCode.c
+
+###############################################################################
+INCLUDE = """// RPN_sourceCode.c
 // GENERATED KERNEL IMPLEMENTING RPN ON CUDA
 
 #include <math.h>
 """
 
-head = """
+HEAD = """
 #define a_ float a = *--dstack; *dstack++ =
 #define ab float a = *--dstack; float b = *--dstack; *dstack++ =
 
@@ -443,9 +507,9 @@ hardcase = []
 for i, (case, code) in enumerate(handcode.iteritems()):
     hardcase += ['/* %s */ %s' % (case, code), ]
     if 'stop' in code:
-        quit = i
+        stop = i
 
-head += """
+HEAD += """
 /************************** CUDA FUNCTIONS ***********************************/
 """
 
@@ -457,13 +521,13 @@ CUDA_sources = {
         'extern _CRTIMP __host__ __device__ __device_builtin__ float',
     ],
     '/usr/local/cuda-5.5/targets/x86_64-linux/include/device_functions.h': [
-        #'extern __device__ __device_builtin__ __cudart_builtin__ float',
+        # 'extern __device__ __device_builtin__ __cudart_builtin__ float',
         'extern _CRTIMP __host__ __device__ __device_builtin__ float',
-        #'extern __device__ __device_builtin__ float',
+        # 'extern __device__ __device_builtin__ float',
     ]
 }
 
-include += '#include <%s>\n' % ('math_constants.h')
+INCLUDE += '#include <%s>\n' % ('math_constants.h')
 
 # Ingest header files to make use of linkable functions.
 CUDA_constants = CUDAMathConstants()
@@ -472,11 +536,11 @@ hardcase += CUDA_constants.cases()
 for filename, signatures in CUDA_sources.iteritems():
     stars = max(2, 73 - len(filename))
     pathname, twixt, basename = filename.partition('/include/')
-    include += '#include <%s>\n' % (basename)
+    INCLUDE += '#include <%s>\n' % (basename)
     left = stars/2
     right = stars - left
     left, right = '*' * left, '*' * right
-    head += '/*%s %s %s*/\n' % (left, filename, right)
+    HEAD += '/*%s %s %s*/\n' % (left, filename, right)
     for signature in signatures:
         CUDA_functions = CUDAMathFunctions(
             filename=filename,
@@ -493,7 +557,9 @@ convolve = """
 // X: width of data field (stride, not necessarily visible image width)
 // Y: height of data field.
 // C: color band (0, 1, or 2)
-__device__ float planar_convolve(float *data, float *kn, int *kx, int *ky, int X, int Y, int C) {
+__device__ float planar_convolve(
+    float *data, float *kn, int *kx, int *ky, int X, int Y, int C)
+{
     float K = 0.0;
     float V = 0.0;
     int x0 = (threadIdx.x + blockIdx.x * blockDim.x);
@@ -539,42 +605,44 @@ __global__ void convolutionGPU(
     //////////////////////////////////////////////////////////////////////
 
     // global mem address for this thread
-    const int gLoc = threadIdx.x + 
+    const int gLoc = threadIdx.x +
                      blockIdx.x * blockDim.x +
                      threadIdx.y * dataW +
-                     blockIdx.y * blockDim.y * dataW; 
+                     blockIdx.y * blockDim.y * dataW;
 
     float sum = 0;
     float value = 0;
 
-    for (int i = -KERNEL_RADIUS; i <= KERNEL_RADIUS; i++)	 // row wise
+    for (int i = -KERNEL_RADIUS; i <= KERNEL_RADIUS; i++)	// row wise
         for (int j = -KERNEL_RADIUS; j <= KERNEL_RADIUS; j++)	// col wise
         {
             // check row first
-            if (blockIdx x == 0 && (threadIdx x + i) < 0)	 // left apron
+            if (blockIdx x == 0 && (threadIdx x + i) < 0)	// left apron
                 value = 0;
-            else if ( blockIdx x == (gridDim x - 1) && 
-                        (threadIdx x + i) > blockDim x-1 )	 // right apron
+            else if ( blockIdx x == (gridDim x - 1) &&
+                        (threadIdx x + i) > blockDim x-1 )	// right apron
                 value = 0;
-            else 
-            { 
+            else
+            {
                 // check col next
-                if (blockIdx y == 0 && (threadIdx y + j) < 0)	 // top apron
+                if (blockIdx y == 0 && (threadIdx y + j) < 0)	// top apron
                     value = 0;
-                else if ( blockIdx y == (gridDim y - 1) && 
-                            (threadIdx y + j) > blockDim y-1 )	 // bottom apron
+                else if ( blockIdx y == (gridDim y - 1) &&
+                            (threadIdx y + j) > blockDim y-1 )	// bottom apron
                     value = 0;
                 else	 // safe case
                     value = d_Data[gLoc + i + j * dataW];
-            } 
-            sum += value * d_Kernel[KERNEL_RADIUS + i] * d_Kernel[KERNEL_RADIUS + j];
+            }
+            sum += value *
+                d_Kernel[KERNEL_RADIUS + i] *
+                d_Kernel[KERNEL_RADIUS + j];
         }
-        d_Result[gLoc] = sum; 
+        d_Result[gLoc] = sum;
 }
 """
 ###############################################################################
 
-tail = """
+TAIL = """
 __device__ int machine(int *code, float *data, float *value) {
     const float numerator = 255.0;
     const float denominator = 1.0 / numerator;
@@ -593,10 +661,10 @@ __device__ int machine(int *code, float *data, float *value) {
 """
 
 for i, case in enumerate(hardcase):
-    tail += ' '*12
-    tail += 'case %3d: %-49s; break;\n' % (i, case)
+    TAIL += ' '*12
+    TAIL += 'case %3d: %-49s; break;\n' % (i, case)
 
-tail += """
+TAIL += """
 %(case)s
             default: error = opcode; break;
         }
@@ -627,56 +695,65 @@ __global__ void RPN( float *inIm, int *code, float *data, int check ) {
 }
 """
 
+
+###############################################################################
 if __name__ == "__main__":
-    data = [0.0, 1.0]
-    code = ['push', "#1",
-            "sub",
+    Banner(arg=[argv[0] + ': main', ], bare=True)
+    if len(argv) == 1:
+        Banner(arg=[argv[0] + ': default code and data', ], bare=True)
+        DATA = [0.0, 1.0]
+        CODE = [
+            'push', '#1',
+            'sub',
             'noop',
             'call', 'here',
             'quit',
             'here:ret', ]
-    if len(sys.argv) > 1:
-        data = []
-        code = []
-        state = 0
-        with open(sys.argv[1]) as source:
+    else:
+        Banner(arg=[argv[0] + ': code and data from file: ', ], bare=True)
+        DATA = []
+        CODE = []
+        STATE = 0
+        with open(argv[1]) as source:
             for number, line in enumerate(source):
                 line = line.strip()
-                if state == 0:
+                if STATE == 0:
                     if line.startswith('#'):
-                        #print number, 'comment'
+                        # print number, 'comment'
                         continue
                     elif line.startswith('.data'):
-                        #print number, 'keyword .data'
-                        state = 1
+                        # print number, 'keyword .data'
+                        STATE = 1
                     else:
                         assert False, '.data section must come first'
-                elif state == 1:
+                elif STATE == 1:
                     if line.startswith('#'):
-                        #print number, 'comment'
+                        # print number, 'comment'
                         continue
-                    line = re.sub(':\s+', ':', line)
+                    line = re.sub(r':\s+', ':', line)
                     if line.startswith('.code'):
-                        #print number, 'keyword .code'
-                        state = 2
+                        # print number, 'keyword .code'
+                        STATE = 2
                     else:
-                        #print number, 'add data'
-                        data += re.split("\s+", line)
-                elif state == 2:
+                        # print number, 'add data'
+                        DATA += re.split(r'\s+', line)
+                elif STATE == 2:
                     if line.startswith('#'):
-                        #print number, 'comment'
+                        # print number, 'comment'
                         continue
-                    line = re.sub(':\s+', ':', line)
-                    #print number, 'add code'
-                    code += re.split("\s+", line)
+                    line = re.sub(r':\s+', ':', line)
+                    # print number, 'add code'
+                    CODE += re.split(r'\s+', line)
 
-    #print '.data\n', '\n'.join([str(datum) for datum in data])
-    #print '.code\n', '\n'.join(code)
+    # print '.data\n', '\n'.join([str(datum) for datum in data])
+    # print '.code\n', '\n'.join(code)
 
+    Banner(arg=[argv[0] + ': run in CUDA', ], bare=True)
     CudaRPN(
         'img/source.png',
         'img/target.png',
-        code,
-        data,
+        CODE,
+        DATA,
         handcode=handcode
     )
+###############################################################################
