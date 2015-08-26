@@ -23,27 +23,32 @@ PYPATH=$(PYTHONPATH):$(HOME)/Banner
 ###############################################################################
 .PHONY: all
 all:	shmathd shm_server shm_client
-	@$(BANNER) "TODO: Run shared memory tests."
-	@$(BANNER) "TODO: integrate shm_server.c into shmathd."
+	@$(BANNER) "daemon TODO: Run shared memory tests."
+	@$(BANNER) "daemon TODO: integrate shm_server.c into shmathd."
 
 ###############################################################################
 .PHONY: clean
 clean:
-	@$(BANNER) "clean daemon directory"
+	@$(BANNER) "daemon: clean daemon directory"
 	@rm -f shmathd shm_server shm_client
 
 ###############################################################################
 shm_client:	shm_client.c Makefile
-	@$(BANNER) "make shared memory test client"
+	@$(BANNER) "daemon: make shared memory test client"
 	@gcc -o $@ $<
 
 ###############################################################################
 shm_server:	shm_server.c Makefile
-	@$(BANNER) "make shared memory test server"
+	@$(BANNER) "daemon: make shared memory test server"
 	@gcc -o $@ $<
 
 ###############################################################################
 shmathd:	shmathd.cpp Makefile
-	@$(BANNER) "make daemon"
+	@$(BANNER) "daemon: make daemon"
 	@g++ $(CFLAGS) -o $@ $<
 ###############################################################################
+
+###############################################################################
+lint:	shmathd.cpp Makefile
+	@$(BANNER) "daemon: no lint checking yet"
+

@@ -25,12 +25,14 @@ all:	$(SUBDIRS)
 .PHONY: daemon
 daemon:
 	@$(BANNER) "make daemon"
+	@cd $@ && $(MAKE) lint
 	@cd $@ && $(MAKE)
 
 ###############################################################################
 .PHONY: gpgpu
 gpgpu:
 	@$(BANNER) "make gpgpu RPN engine"
+	@cd $@ && $(MAKE) lint
 	@cd $@ && sudo $(MAKE)
 
 ###############################################################################

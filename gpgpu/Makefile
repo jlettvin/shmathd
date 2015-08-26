@@ -26,13 +26,13 @@ PYPATH=$(HOME)/Banner
 ###############################################################################
 .PHONY: all
 all:	$(MODULE).py $(MAKES) Makefile
-	@$(BANNER) "run $(MODULE)"
+	@$(BANNER) "$(MODULE): all"
 	@PYTHONPATH=$(PYPATH) python $(MODULE).py
 
 ###############################################################################
 .PHONY: clean
 clean:
-	@$(BANNER) "clean gpgpu directory"
+	@$(BANNER) "$(MODULE): clean gpgpu directory"
 	@rm -f img/checkers*.png img/gray*.png
 	@rm -f RPN_CUDA_*.txt RPN_sourceCode.c
 	@rm -f img/target.png
@@ -40,13 +40,13 @@ clean:
 
 ###############################################################################
 $(CHECKERIMG):	make_checkers.py Makefile
-	@$(BANNER) "make checkers figures"
+	@$(BANNER) "$(MODULE): make checkers figures"
 	@mkdir -p -m 777 img
 	@for i in 1 2 3 4 5 6 10 12 15 20 30; do ./$< 60 $$i; done
 
 ###############################################################################
 $(NOISYIMG):	make_noisyboundary.py Makefile
-	@$(BANNER) "make noisy figures"
+	@$(BANNER) "$(MODULE): make noisy figures"
 	@mkdir -p -m 777 img
 	@for i in 3e-2 5e-2; \
 		do for j in 3e-1 5e-1; \
@@ -56,6 +56,7 @@ $(NOISYIMG):	make_noisyboundary.py Makefile
 
 ###############################################################################
 lint: $(MODULE).py
+	@$(BANNER) "$(MODULE): lint"
 	@-pep8 $< > $<.pep8 2>&1
 	@-pylint $< > $<.pylint 2>&1
 	@-pyflakes $< > $<.pyflakes 2>&1
